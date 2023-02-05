@@ -1,5 +1,5 @@
 default:
-	javac Server.java
+	javac Server.java clientOne.java
 runs:
 	java Server
 runc:

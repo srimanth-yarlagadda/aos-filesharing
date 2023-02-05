@@ -1,5 +1,6 @@
 import java.net.*;
 import java.io.*;
+import java.util.*;
 
 public class Server {
     
@@ -10,6 +11,10 @@ public class Server {
     String recMessage;
     int runServer = 2;
     private String Data = "";
+    Hashtable<String, String> messageDict = new Hashtable<String, String>();
+    Hashtable<String, String> msgCounter = new Hashtable<String, String>();
+    String msgID;
+    int newID;
 
     public void start(int port) {
         try {
@@ -21,20 +26,37 @@ public class Server {
         }
     }
 
+    public void storeMsg(String port, String message) {
+        if (msgCounter.containsKey(""+port)) {
+            msgID = msgCounter.get(""+port);
+        } else {
+            msgID = "0";
+        }
+        newID = Integer.parseInt(msgID);
+        newID += 1;
+        msgCounter.put(""+port, ""+newID);
+        messageDict.put(""+port+msgID, message);
+    }
+
     public void listen() {
         try {
             while (runServer != 0) {
                     clientSocket = serverSocket.accept(); 
                     in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
                     for (String recMessage=in.readLine(); recMessage!=null; recMessage=in.readLine()) {
-                        Data = Data + recMessage;
-                        System.out.println("Received on " + clientSocket.getPort() + ": "+recMessage);
                         if ("end".equals(recMessage)) {
                             runServer -= 1;
+                        } else {
+                        storeMsg(""+clientSocket.getPort(), recMessage);
+                        System.out.println("Received on " + clientSocket.getPort() + ": "+recMessage);
                         }
                     }
                     recMessage = in.readLine();
                 }
+            System.out.println("\n\n\n");
+            System.out.println(msgCounter);
+            System.out.println("\n\n\n");
+            System.out.println(messageDict);
         } catch (IOException except) {
             System.err.println("Cannot listen on given port.");
             except.printStackTrace();
@@ -55,7 +77,23 @@ public class Server {
     }
 
     public void print() {
+        System.out.println("\n\n#################\n");
         System.out.println(Data);
+        System.out.println("\n#################\n\n");
+    }
+
+    public void stitchMessages() {
+        String fullKey,m;
+        for (String port: msgCounter.keySet()) {
+            int totMessages = Integer.parseInt(msgCounter.get(port));
+            String halfKey = port;
+            for (int i = 0; i < totMessages; i++) {
+                fullKey = halfKey + i;
+                m = messageDict.get(fullKey);
+                Data = Data + m;
+            }
+        }
+
     }
 
     public static void main(String[] args) {
@@ -65,6 +103,7 @@ public class Server {
         System.out.println("Shutting down server and socket !");
         server.stop();
         System.out.println("Total data received:");
+        server.stitchMessages();
         server.print();
     }
 }

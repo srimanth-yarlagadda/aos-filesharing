@@ -37,6 +37,12 @@ public class clientOne {
         int port = 9038;
         clientOne connect =new clientOne();
         connect.startConnection(ipaddress, port);
-        connect.sendData("oneData.txt");
+        String filename = "oneData.txt";
+        if (args.length != 0) {
+            if (args[0].equals("2")) {
+                filename = "twoData.txt";
+            }
+        }
+        connect.sendData(filename);
     }
 }
