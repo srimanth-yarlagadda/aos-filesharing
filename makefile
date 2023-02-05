@@ -1,19 +1,25 @@
-JFLAGS = -g
-JC = javac
-JVM = java
-.SUFFIXES: .java .class
-.java.class: ; $(JC) $(JFLAGS) $*.java
+default:
+	javac Server.java
+runs:
+	java Server
+runc:
+	java clientOne
+# JFLAGS = -g
+# JC = javac
+# JVM = java
+# .SUFFIXES: .java .class
+# .java.class: ; $(JC) $(JFLAGS) $*.java
 
-CLASSES = \
-	test.java
+# CLASSES = \
+# 	test.java
 
-default: classes run
+# default: classes run
 
-classes: $(CLASSES:.java=.class)
+# classes: $(CLASSES:.java=.class)
 
-clean:; $(RM) *.class
-run: classes 
-	$(JVM) $(MAIN)
+# clean:; $(RM) *.class
+# run: classes 
+# 	$(JVM) $(MAIN)
 
-run2: test.class
-	java test
+# run2: test.class
+# 	java test

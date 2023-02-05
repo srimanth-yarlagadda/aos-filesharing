@@ -1,7 +1,6 @@
 import java.net.*;
 import java.io.*;
 
-
 public class Server {
     
     private ServerSocket serverSocket;
@@ -9,31 +8,37 @@ public class Server {
     private PrintWriter out;
     private BufferedReader in;
     String recMessage;
-    boolean listening = true;
+    int runServer = 2;
+    private String Data = "";
 
     public void start(int port) {
-        System.out.println("Start member called");
         try {
             serverSocket = new ServerSocket(port);
-            while (listening){
-                clientSocket = serverSocket.accept(); 
-                in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-                // String greeting = in.readLine();
-                for (String recMessage=in.readLine(); recMessage!=null; recMessage=in.readLine()) {
-                    System.out.println("Received on " + clientSocket.getPort() + ": "+recMessage);
-                    if ("end".equals(recMessage)) {
-                        listening = false;
-                    }
-                }
-                recMessage = in.readLine();
-            }
-        // serverSocket.close();
+            System.out.println("Server started: "+serverSocket+"\n");            
         } catch (IOException e) {
-            System.err.println("Cannot listen on given port.");
+            System.err.println("Cannot create server");
             e.printStackTrace();
         }
+    }
 
-       
+    public void listen() {
+        try {
+            while (runServer != 0) {
+                    clientSocket = serverSocket.accept(); 
+                    in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                    for (String recMessage=in.readLine(); recMessage!=null; recMessage=in.readLine()) {
+                        Data = Data + recMessage;
+                        System.out.println("Received on " + clientSocket.getPort() + ": "+recMessage);
+                        if ("end".equals(recMessage)) {
+                            runServer -= 1;
+                        }
+                    }
+                    recMessage = in.readLine();
+                }
+        } catch (IOException except) {
+            System.err.println("Cannot listen on given port.");
+            except.printStackTrace();
+        }
     }
 
     public void stop() {
@@ -49,10 +54,17 @@ public class Server {
         }
     }
 
+    public void print() {
+        System.out.println(Data);
+    }
+
     public static void main(String[] args) {
         Server server=new Server();
         server.start(9038);
+        server.listen();
         System.out.println("Shutting down server and socket !");
         server.stop();
+        System.out.println("Total data received:");
+        server.print();
     }
 }
