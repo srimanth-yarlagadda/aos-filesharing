@@ -4,6 +4,8 @@ import java.io.*;
 public class clientOne {
     private Socket clientSocket;
     private PrintWriter out;
+    private BufferedReader in;
+    String recMessage;
 
     public void sendData(String filename) {
         try {
@@ -20,10 +22,26 @@ public class clientOne {
         }
     }
 
+    public void receive() {
+        try {
+            while (true) {
+                for (String recMessage=in.readLine(); recMessage!=null; recMessage=in.readLine()) {
+                    System.out.println("Client received on " + clientSocket.getPort() + ": "+recMessage);
+                }
+                recMessage = in.readLine();
+            }
+        } catch (IOException except) {
+            System.err.println("Cannot listen on given port.");
+            except.printStackTrace();
+        }
+    }
+
+
     public void startConnection(String ip, int port) {
         try {
             clientSocket = new Socket(ip, port);
             out = new PrintWriter(clientSocket.getOutputStream(), true);
+            in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             System.out.println("Connection Successful: " + clientSocket);
         } catch (IOException except) {
             System.err.println("Connection failed!");
@@ -44,5 +62,6 @@ public class clientOne {
             }
         }
         connect.sendData(filename);
+        connect.receive();
     }
 }
