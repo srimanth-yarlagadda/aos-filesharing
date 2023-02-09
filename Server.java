@@ -12,7 +12,7 @@ public class Server implements Runnable {
     String recMessage;
     int runServer = 3;
     private static String Data = "";
-    private static Hashtable<String, String> messageDict = new Hashtable<String, String>();
+    private static Hashtable<String, byte[]> messageDict = new Hashtable<String, byte[]>();
     private static Hashtable<String, String> msgCounter = new Hashtable<String, String>();
     String msgID;
     int newID;
@@ -30,7 +30,7 @@ public class Server implements Runnable {
         }
     }
 
-    public void storeMsg(String port, String message) {
+    public void storeMsg(String port, byte[] message) {
         if (msgCounter.containsKey(""+port)) {
             msgID = msgCounter.get(""+port);
         } else {
@@ -66,20 +66,52 @@ public class Server implements Runnable {
         System.out.println("Current Thread ID: " + Thread.currentThread().getId());
 
         try {
-        inStr = new BufferedReader(new InputStreamReader(thisSocket.getInputStream()));
-        for (String rec=inStr.readLine(); rec!="end"; rec=inStr.readLine()) {
-            if ("end".equals(rec)) {
-                // runServer -= 1;
-                totalClientReceipts += 1;
-                System.out.println("ending....");
-                break;
-            } else {
-            storeMsg(""+thisSocket.getPort(), rec);
-            System.out.println("[" + thisSocket.getPort() + "]: "+rec);
-            TimeUnit.SECONDS.sleep(1);
-            // System.out.println("\n=========\n");
-            }            
-        } 
+            inStr = new BufferedReader(new InputStreamReader(thisSocket.getInputStream()));
+            DataInputStream inStreamByte = new DataInputStream(thisSocket.getInputStream());
+            boolean receiveData = true;
+            
+
+
+            // byte[] message = new byte[1];
+            // inStreamByte.readFully(message, 0, 1);
+            // // char[] charset = message;
+            // System.out.println("Got byte: " + (char)message[0]);
+
+            
+            // inStreamByte.readFully(message, 0, 1);
+            // char[] charset = message;
+            int totlen = inStreamByte.readInt();
+            System.out.println("Got byte: " + totlen);
+            
+
+            while (receiveData) {
+                totlen = inStreamByte.readInt();
+                System.out.println("Got byte inside: " + totlen);
+                if (totlen < 0) {
+                    receiveData = false;
+                    break;
+                } else {
+                    byte[] byteData = new byte[totlen];
+                    inStreamByte.readFully(byteData, 0, totlen);
+                    storeMsg(""+thisSocket.getPort(), byteData);
+                    String dummy = new String(byteData);
+                    System.out.println("reced ==> " + dummy);
+                }
+            }
+            
+            
+            for (String rec=inStr.readLine(); rec!="end"; rec=inStr.readLine()) {
+                if ("end".equals(rec)) {
+                    // runServer -= 1;
+                    totalClientReceipts += 1;
+                    System.out.println("ending....");
+                    break;
+                } else {
+                // storeMsg(""+thisSocket.getPort(), rec);
+                System.out.println("[" + thisSocket.getPort() + "]: "+rec);
+                TimeUnit.SECONDS.sleep(1);
+                }            
+            } 
         } catch (IOException | InterruptedException except) {
             System.err.println("Cannot listen on given port.");
             except.printStackTrace();
@@ -150,7 +182,8 @@ public class Server implements Runnable {
             }
         }
         System.out.println("[Stitching]");
-        String fullKey,m;
+        String fullKey;
+        byte[] m;
         for (String port: msgCounter.keySet()) {
             int totMessages = Integer.parseInt(msgCounter.get(port));
             String halfKey = port;
@@ -167,6 +200,7 @@ public class Server implements Runnable {
     public void sendData(PrintWriter outChannel, int port) {
         System.out.println("\n====== SENDING DATA over " + port);
         outChannel.println(Data);
+        outChannel.println("end");
         System.out.println("Responded to " + port);
     }
 
