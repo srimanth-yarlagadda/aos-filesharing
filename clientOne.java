@@ -8,7 +8,9 @@ public class clientOne {
     private PrintWriter out;
     private BufferedReader in;
     DataOutputStream outStreamByte;
+    DataInputStream inByte;
     String recMessage;
+    byte[] recFullFile = new byte[1200];
 
     public void sendData(String filename) {
         try {
@@ -44,14 +46,20 @@ public class clientOne {
     public void receive() {
         try {
             while (true) {
-                for (String recMessage=in.readLine(); recMessage!=null; recMessage=in.readLine()) {
-                    System.out.println("Client received on " + clientSocket.getPort() + ": "+recMessage);
-                    if ("end".equals(recMessage)) {
-                        break;
-                    }
-                }
+                inByte.readFully(recFullFile, 0, 1200);
+                String dummy = new String(recFullFile);
+                System.out.println("reced ==> " + dummy);
                 break;
             }
+            // while (false) {
+            //     for (String recMessage=in.readLine(); recMessage!=null; recMessage=in.readLine()) {
+            //         System.out.println("Client received on " + clientSocket.getPort() + ": "+recMessage);
+            //         if ("end".equals(recMessage)) {
+            //             break;
+            //         }
+            //     }
+            //     break;
+            // }
         } catch (IOException except) {
             System.err.println("Cannot listen on given port.");
             except.printStackTrace();
@@ -65,6 +73,7 @@ public class clientOne {
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             outStreamByte = new DataOutputStream(clientSocket.getOutputStream());
+            inByte = new DataInputStream(clientSocket.getInputStream());
             System.out.println("Connection Successful: " + clientSocket);
         } catch (IOException except) {
             System.err.println("Connection failed!");

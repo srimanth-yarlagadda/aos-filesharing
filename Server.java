@@ -2,6 +2,7 @@ import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.nio.file.Files;
 
 public class Server implements Runnable {
     
@@ -11,7 +12,7 @@ public class Server implements Runnable {
     private BufferedReader in;
     String recMessage;
     int runServer = 3;
-    private static String Data = "";
+    private static byte[] Data = new byte[1200];
     private static Hashtable<String, byte[]> messageDict = new Hashtable<String, byte[]>();
     private static Hashtable<String, String> msgCounter = new Hashtable<String, String>();
     String msgID;
@@ -128,7 +129,8 @@ public class Server implements Runnable {
             }
             // System.out.println("Transmitting to " + thisSocket.getPort());
             PrintWriter outChannel = new PrintWriter(thisSocket.getOutputStream(), true);
-            sendData(outChannel, thisSocket.getPort());
+            DataOutputStream sendByte = new DataOutputStream(thisSocket.getOutputStream());
+            sendData(sendByte, thisSocket.getPort());
             // System.out.println("!! Transmitted to " + thisSocket.getPort());
         } catch (IOException  except) {
             System.err.println("Cannot listen on given port.");
@@ -184,23 +186,34 @@ public class Server implements Runnable {
         System.out.println("[Stitching]");
         String fullKey;
         byte[] m;
+        int datit = 0;
         for (String port: msgCounter.keySet()) {
             int totMessages = Integer.parseInt(msgCounter.get(port));
             String halfKey = port;
             for (int i = 0; i < totMessages; i++) {
                 fullKey = halfKey + i;
                 m = messageDict.get(fullKey);
-                Data = Data + m;
+                for (int k = 0; k < m.length; k++) {
+                    Data[datit] = m[k];
+                    datit++;
+                }
             }
         }
+        String dummy = new String(Data);
+        System.out.println("stitched ==> " + dummy);
         dataReady = true;
         System.out.println("[Stitching Done]");
     }
 
-    public void sendData(PrintWriter outChannel, int port) {
+    public void sendData(DataOutputStream outChannel, int port) {
         System.out.println("\n====== SENDING DATA over " + port);
-        outChannel.println(Data);
-        outChannel.println("end");
+        try {
+            outChannel.write(Arrays.copyOfRange(Data,0, 1200));
+        } catch (IOException except) {
+            except.printStackTrace();
+        }
+        // outChannel.println(Data);
+        // outChannel.println("end");
         System.out.println("Responded to " + port);
     }
 
