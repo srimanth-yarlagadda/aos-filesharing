@@ -87,10 +87,10 @@ public class clientOne {
         int port = 9038;
         clientOne connect =new clientOne();
         connect.startConnection(ipaddress, port);
-        String filename = "oneData.txt";
+        String filename = "dirOne/oneData.txt";
         if (args.length != 0) {
             if (args[0].equals("2")) {
-                filename = "twoData.txt";
+                filename = "dirTwo/twoData.txt";
             }
         }
         connect.sendData(filename);

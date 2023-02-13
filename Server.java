@@ -20,6 +20,7 @@ public class Server implements Runnable {
     private Socket thisSocket;
     private static int totalClientReceipts = 0;
     private static boolean dataReady = false;
+    private static int clientsDone = 0;
 
     public void start(int port) {
         try {
@@ -51,15 +52,21 @@ public class Server implements Runnable {
     // @override
     public void run() {
         
-        while (thisSocket == null) {
+        while (thisSocket == null & serverSocket != null) {
             try {
                 System.out.println("\nListening from thread on: "+serverSocket);
                 Socket clinSock = serverSocket.accept();
                 (new Thread(new Server().assignSocket(clinSock))).start();
                 // System.out.println("\n\n\nNo longer listening from thread !\n\n\n");
             } catch (IOException except) {
-                except.printStackTrace();
+                // except.printStackTrace();
+                System.out.println("\n\n\nhere !! \n\n\n");
+                break;
             }
+        }
+
+        if (thisSocket == null) {
+            return;
         }
 
         BufferedReader inStr;
@@ -70,9 +77,6 @@ public class Server implements Runnable {
             inStr = new BufferedReader(new InputStreamReader(thisSocket.getInputStream()));
             DataInputStream inStreamByte = new DataInputStream(thisSocket.getInputStream());
             boolean receiveData = true;
-            
-
-
             // byte[] message = new byte[1];
             // inStreamByte.readFully(message, 0, 1);
             // // char[] charset = message;
@@ -90,6 +94,8 @@ public class Server implements Runnable {
                 System.out.println("Got byte inside: " + totlen);
                 if (totlen < 0) {
                     receiveData = false;
+                    totalClientReceipts += 1;
+                    System.out.println("ending....");
                     break;
                 } else {
                     byte[] byteData = new byte[totlen];
@@ -97,22 +103,21 @@ public class Server implements Runnable {
                     storeMsg(""+thisSocket.getPort(), byteData);
                     String dummy = new String(byteData);
                     System.out.println("reced ==> " + dummy);
+                    System.out.println("[" + thisSocket.getPort() + "]==>: "+dummy);
                 }
             }
             
-            
-            for (String rec=inStr.readLine(); rec!="end"; rec=inStr.readLine()) {
-                if ("end".equals(rec)) {
-                    // runServer -= 1;
-                    totalClientReceipts += 1;
-                    System.out.println("ending....");
-                    break;
-                } else {
-                // storeMsg(""+thisSocket.getPort(), rec);
-                System.out.println("[" + thisSocket.getPort() + "]: "+rec);
+            // for (String rec=inStr.readLine(); rec!="end"; rec=inStr.readLine()) {
+            //     if ("end".equals(rec)) {
+            //         // runServer -= 1;
+
+            //         break;
+            //     } else {
+            //     // storeMsg(""+thisSocket.getPort(), rec);
+            //     System.out.println("[" + thisSocket.getPort() + "]: "+rec);
                 TimeUnit.SECONDS.sleep(1);
-                }            
-            } 
+            //     }            
+            // } 
         } catch (IOException | InterruptedException except) {
             System.err.println("Cannot listen on given port.");
             except.printStackTrace();
@@ -136,10 +141,9 @@ public class Server implements Runnable {
             System.err.println("Cannot listen on given port.");
             except.printStackTrace();
         }
-
+        clientsDone += 1;
+        return;
     }
-
-    
 
     public void listen() {
         try {
@@ -155,11 +159,11 @@ public class Server implements Runnable {
         }
     }
 
-    public void stop() {
+    public void stopServer() {
         try {
-            in.close();
+            // in.close();
             // out.close();
-            clientSocket.close();
+            // clientSocket.close();
             serverSocket.close();
             System.out.println("Shut down: Success !");
         } catch (IOException e) {
@@ -201,8 +205,26 @@ public class Server implements Runnable {
         }
         String dummy = new String(Data);
         System.out.println("stitched ==> " + dummy);
+        int endByte = Data.length;
+        for (int i = 0; i < Data.length; i++) {
+            if (Data[i] == 0) {
+                endByte = i;
+                break;
+            }
+        }
         dataReady = true;
         System.out.println("[Stitching Done]");
+        File serverCopy = new File("dirThree/threeData.txt");
+        try {
+            if (serverCopy.delete()) {
+                serverCopy.createNewFile();
+            }
+            FileOutputStream writeOp = new FileOutputStream(serverCopy);
+            writeOp.write(Data,0,endByte);
+        } catch(IOException except) {
+            except.printStackTrace();
+        }
+        return;
     }
 
     public void sendData(DataOutputStream outChannel, int port) {
@@ -220,9 +242,24 @@ public class Server implements Runnable {
     public static void main(String[] args) {
         Server server=new Server();
         server.start(9038);
-        (new Thread(new Server() )).start();
+        Thread serveThread = (new Thread(new Server() ));
+        serveThread.start();
         System.out.println("Total data received:");
         server.stitchMessages();
+        
+        try {
+            System.out.println("\n\n\nBegin Server Close");
+            // serveThread.interrupt();
+            while (clientsDone < 2) {
+                TimeUnit.SECONDS.sleep(2);
+            }
+            server.stopServer();
+            System.out.println("\n\n\nEnd Server Close");
+        } catch (InterruptedException except) {
+            except.printStackTrace();
+        }
+        // Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
+        // System.out.println("Thread Set>>> "+threadSet);
         // server.print();
         // server.sendData();
     }
