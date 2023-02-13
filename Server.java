@@ -15,12 +15,14 @@ public class Server implements Runnable {
     private static byte[] Data = new byte[1200];
     private static Hashtable<String, byte[]> messageDict = new Hashtable<String, byte[]>();
     private static Hashtable<String, String> msgCounter = new Hashtable<String, String>();
+    private static ArrayList<String> portOrder = new ArrayList<String>();
     String msgID;
     int newID;
     private Socket thisSocket;
     private static int totalClientReceipts = 0;
     private static boolean dataReady = false;
     private static int clientsDone = 0;
+    private static int debug = 0;
 
     public void start(int port) {
         try {
@@ -49,18 +51,17 @@ public class Server implements Runnable {
         return this;
     }
 
-    // @override
     public void run() {
         
         while (thisSocket == null & serverSocket != null) {
             try {
                 System.out.println("\nListening from thread on: "+serverSocket);
                 Socket clinSock = serverSocket.accept();
+                portOrder.add(String.valueOf(clinSock.getPort()));
                 (new Thread(new Server().assignSocket(clinSock))).start();
-                // System.out.println("\n\n\nNo longer listening from thread !\n\n\n");
             } catch (IOException except) {
                 // except.printStackTrace();
-                System.out.println("\n\n\nhere !! \n\n\n");
+                System.out.println("\nConnection Closed !! \n");
                 break;
             }
         }
@@ -70,28 +71,17 @@ public class Server implements Runnable {
         }
 
         BufferedReader inStr;
-        System.out.println("\n\n\nListening...."+thisSocket);
+        System.out.println("\nListening...."+thisSocket);
         System.out.println("Current Thread ID: " + Thread.currentThread().getId());
 
         try {
             inStr = new BufferedReader(new InputStreamReader(thisSocket.getInputStream()));
             DataInputStream inStreamByte = new DataInputStream(thisSocket.getInputStream());
             boolean receiveData = true;
-            // byte[] message = new byte[1];
-            // inStreamByte.readFully(message, 0, 1);
-            // // char[] charset = message;
-            // System.out.println("Got byte: " + (char)message[0]);
-
-            
-            // inStreamByte.readFully(message, 0, 1);
-            // char[] charset = message;
-            int totlen = inStreamByte.readInt();
-            System.out.println("Got byte: " + totlen);
-            
+            int totlen; 
 
             while (receiveData) {
                 totlen = inStreamByte.readInt();
-                System.out.println("Got byte inside: " + totlen);
                 if (totlen < 0) {
                     receiveData = false;
                     totalClientReceipts += 1;
@@ -102,45 +92,28 @@ public class Server implements Runnable {
                     inStreamByte.readFully(byteData, 0, totlen);
                     storeMsg(""+thisSocket.getPort(), byteData);
                     String dummy = new String(byteData);
-                    System.out.println("reced ==> " + dummy);
-                    System.out.println("[" + thisSocket.getPort() + "]==>: "+dummy);
+                    if (debug == 1) {
+                        System.out.println("reced ==> " + dummy);
+                        System.out.println("[" + thisSocket.getPort() + "]==>: "+dummy);
+                    }
                 }
             }
-            
-            // for (String rec=inStr.readLine(); rec!="end"; rec=inStr.readLine()) {
-            //     if ("end".equals(rec)) {
-            //         // runServer -= 1;
 
-            //         break;
-            //     } else {
-            //     // storeMsg(""+thisSocket.getPort(), rec);
-            //     System.out.println("[" + thisSocket.getPort() + "]: "+rec);
-                TimeUnit.SECONDS.sleep(1);
-            //     }            
-            // } 
+            TimeUnit.SECONDS.sleep(1);
         } catch (IOException | InterruptedException except) {
             System.err.println("Cannot listen on given port.");
             except.printStackTrace();
-            // inter.printStackTrace();
         }
 
-        try {
-            while (dataReady == false) {
-                try {
-                    TimeUnit.SECONDS.sleep(2);
-                } catch (InterruptedException except) {
-                    except.printStackTrace();
-                }
+        while (dataReady == false) {
+            try {
+                TimeUnit.SECONDS.sleep(2);
+            } catch (InterruptedException except) {
+                except.printStackTrace();
             }
-            // System.out.println("Transmitting to " + thisSocket.getPort());
-            PrintWriter outChannel = new PrintWriter(thisSocket.getOutputStream(), true);
-            DataOutputStream sendByte = new DataOutputStream(thisSocket.getOutputStream());
-            sendData(sendByte, thisSocket.getPort());
-            // System.out.println("!! Transmitted to " + thisSocket.getPort());
-        } catch (IOException  except) {
-            System.err.println("Cannot listen on given port.");
-            except.printStackTrace();
         }
+        
+        sendData(thisSocket);
         clientsDone += 1;
         return;
     }
@@ -155,7 +128,6 @@ public class Server implements Runnable {
         } catch (IOException except) {
             System.err.println("Accept failed !");
             except.printStackTrace();
-        //     // inter.printStackTrace();
         }
     }
 
@@ -187,11 +159,11 @@ public class Server implements Runnable {
                 except.printStackTrace();
             }
         }
-        System.out.println("[Stitching]");
+        System.out.println("[Processing Data]");
         String fullKey;
         byte[] m;
         int datit = 0;
-        for (String port: msgCounter.keySet()) {
+        for (String port: portOrder) {
             int totMessages = Integer.parseInt(msgCounter.get(port));
             String halfKey = port;
             for (int i = 0; i < totMessages; i++) {
@@ -203,8 +175,8 @@ public class Server implements Runnable {
                 }
             }
         }
-        String dummy = new String(Data);
-        System.out.println("stitched ==> " + dummy);
+        // String dummy = new String(Data);
+        // System.out.println("stitched ==> " + dummy);
         int endByte = Data.length;
         for (int i = 0; i < Data.length; i++) {
             if (Data[i] == 0) {
@@ -213,7 +185,7 @@ public class Server implements Runnable {
             }
         }
         dataReady = true;
-        System.out.println("[Stitching Done]");
+        System.out.println("[Processed Data]");
         File serverCopy = new File("dirThree/threeData.txt");
         try {
             if (serverCopy.delete()) {
@@ -227,10 +199,29 @@ public class Server implements Runnable {
         return;
     }
 
-    public void sendData(DataOutputStream outChannel, int port) {
+    public void sendData(Socket thisSocket) {
+        int port = thisSocket.getPort();
         System.out.println("\n====== SENDING DATA over " + port);
         try {
-            outChannel.write(Arrays.copyOfRange(Data,0, 1200));
+            DataInputStream inByte = new DataInputStream(thisSocket.getInputStream());
+            DataOutputStream outChannel = new DataOutputStream(thisSocket.getOutputStream());
+            outChannel.writeInt(1200);
+            int ack = inByte.readInt();
+            outChannel.flush();
+            // int runc = 2;
+            int cut = 0;
+            for (int r = 0; r < 6; r++) {
+                // System.out.println("\n" + port + " " + r);
+                outChannel.writeInt(100);
+                outChannel.flush();
+                ack = inByte.readInt();
+                outChannel.write(Arrays.copyOfRange(Data,cut, cut+100));
+                outChannel.flush();
+                ack = inByte.readInt();
+                String dummy = new String(Arrays.copyOfRange(Data,cut, cut+100));
+                cut += 100;
+            }
+            outChannel.writeInt(-1);
         } catch (IOException except) {
             except.printStackTrace();
         }
@@ -240,27 +231,24 @@ public class Server implements Runnable {
     }
 
     public static void main(String[] args) {
+        if (args.length != 0) {
+            if (args[0].equals("1")) {
+                debug = 1;
+            }
+        }
         Server server=new Server();
         server.start(9038);
         Thread serveThread = (new Thread(new Server() ));
         serveThread.start();
-        System.out.println("Total data received:");
         server.stitchMessages();
         
         try {
-            System.out.println("\n\n\nBegin Server Close");
-            // serveThread.interrupt();
             while (clientsDone < 2) {
                 TimeUnit.SECONDS.sleep(2);
             }
             server.stopServer();
-            System.out.println("\n\n\nEnd Server Close");
         } catch (InterruptedException except) {
             except.printStackTrace();
         }
-        // Set<Thread> threadSet = Thread.getAllStackTraces().keySet();
-        // System.out.println("Thread Set>>> "+threadSet);
-        // server.print();
-        // server.sendData();
     }
 }

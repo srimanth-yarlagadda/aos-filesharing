@@ -2,10 +2,12 @@ default:
 	clear
 	javac Server.java
 	java Server
-runs:
-	java Server
-runc:
+1:
+	clear
 	java clientOne
+2:
+	clear
+	java clientOne 2
 # JFLAGS = -g
 # JC = javac
 # JVM = java

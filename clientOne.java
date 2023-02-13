@@ -10,23 +10,18 @@ public class clientOne {
     DataOutputStream outStreamByte;
     DataInputStream inByte;
     String recMessage;
-    byte[] recFullFile = new byte[1200];
+    private static String filename, outputFilename;
+    byte[] recFullFile;
+    List<byte[]> partialFile = new ArrayList<byte[]>();
 
-    public void sendData(String filename) {
+    public void sendData() {
         try {
-            outStreamByte.writeInt(1);
             BufferedReader inputData = new BufferedReader(new FileReader(filename));
             String dataLine;
             
-            // Path filepath = filename;
             File file = new File(filename);
             byte[] fileData = Files.readAllBytes(file.toPath());
-            // System.out.println("PrintData: "+Arrays.toString(fileData));
 
-            
-            // while ((dataLine = inputData.readLine()) != null)   {
-            //     out.println (dataLine);
-            // }
             int cut = 0;
             for (int i = 0; i < 3; i ++) {
                 outStreamByte.writeInt(100);
@@ -45,21 +40,54 @@ public class clientOne {
 
     public void receive() {
         try {
-            while (true) {
-                inByte.readFully(recFullFile, 0, 1200);
-                String dummy = new String(recFullFile);
-                System.out.println("reced ==> " + dummy);
-                break;
+            int fullLength = inByte.readInt();
+            outStreamByte.writeInt(-2);
+            System.out.println("Buffer created with " + fullLength);
+            fullLength = 0;
+            // recFullFile = new byte[fullLength];
+            
+            int byteInd = 0;
+            int ct = 0;
+            int increment = 0;
+            boolean runboool = true;
+            while (runboool) {
+                increment = inByte.readInt();
+                outStreamByte.writeInt(-2);
+                System.out.println(ct + " Incre===> " + increment + " byteind " + byteInd);
+                ct += 1;
+                if (increment == -1) {
+                    runboool = false;
+                    System.out.println("\n***END\n");
+                    break;
+                } else {
+                    byte[] tempBuff = new byte[increment];
+                    fullLength += increment;
+                    inByte.readFully(tempBuff, 0, tempBuff.length);
+                    partialFile.add(tempBuff);
+                    System.out.println("buffered\n");
+                    outStreamByte.writeInt(-3);
+                    String dummy = new String(Arrays.copyOfRange(tempBuff,0, tempBuff.length));
+                    System.out.println("\nreced ==> " + dummy + "]\n");
+                    // byteInd += increment;
+                }
             }
-            // while (false) {
-            //     for (String recMessage=in.readLine(); recMessage!=null; recMessage=in.readLine()) {
-            //         System.out.println("Client received on " + clientSocket.getPort() + ": "+recMessage);
-            //         if ("end".equals(recMessage)) {
-            //             break;
-            //         }
-            //     }
-            //     break;
-            // }
+            System.out.println("\n\nOut of loop");
+            recFullFile = new byte[fullLength];
+            int buffIt = 0;
+            for (byte[] piece: partialFile) {
+                for (int k = 0; k < piece.length; k++) {
+                    recFullFile[buffIt] = piece[k];
+                    buffIt++;
+                }
+            }
+            String dummy = new String(Arrays.copyOfRange(recFullFile,0, recFullFile.length));
+            System.out.println("\n\n OUT ==>> " + dummy);
+            File clientFullFile = new File(outputFilename);
+            if (clientFullFile.delete()) {
+                clientFullFile.createNewFile();
+            }
+            FileOutputStream writeOp = new FileOutputStream(clientFullFile);
+            writeOp.write(recFullFile,0,recFullFile.length);
         } catch (IOException except) {
             System.err.println("Cannot listen on given port.");
             except.printStackTrace();
@@ -87,13 +115,15 @@ public class clientOne {
         int port = 9038;
         clientOne connect =new clientOne();
         connect.startConnection(ipaddress, port);
-        String filename = "dirOne/oneData.txt";
+        filename = "dirOne/oneData.txt";
+        outputFilename = "dirOne/fullData.txt";
         if (args.length != 0) {
             if (args[0].equals("2")) {
                 filename = "dirTwo/twoData.txt";
+                outputFilename = "dirTwo/fullData.txt";
             }
         }
-        connect.sendData(filename);
+        connect.sendData();
         connect.receive();
         System.out.println("END");
 
