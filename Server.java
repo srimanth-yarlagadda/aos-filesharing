@@ -34,16 +34,16 @@ public class Server implements Runnable {
         }
     }
 
-    public void storeMsg(String port, byte[] message) {
-        if (msgCounter.containsKey(""+port)) {
-            msgID = msgCounter.get(""+port);
+    public void storeMsg(String source, byte[] message) {
+        if (msgCounter.containsKey(""+source)) {
+            msgID = msgCounter.get(""+source);
         } else {
             msgID = "0";
         }
         newID = Integer.parseInt(msgID);
         newID += 1;
-        msgCounter.put(""+port, ""+newID);
-        messageDict.put(""+port+msgID, message);
+        msgCounter.put(""+source, ""+newID);
+        messageDict.put(""+source+"#"+msgID, message);
     }
 
     public Server assignSocket(Socket tsock) {
@@ -55,7 +55,6 @@ public class Server implements Runnable {
         
         while (thisSocket == null & serverSocket != null) {
             try {
-                System.out.println("\nListening from thread on: "+serverSocket);
                 Socket clinSock = serverSocket.accept();
                 portOrder.add(String.valueOf(clinSock.getPort()));
                 (new Thread(new Server().assignSocket(clinSock))).start();
@@ -72,13 +71,19 @@ public class Server implements Runnable {
 
         BufferedReader inStr;
         System.out.println("\nListening...."+thisSocket);
-        System.out.println("Current Thread ID: " + Thread.currentThread().getId());
-
+        if (debug == 1) {
+            System.out.println("Current Thread ID: " + Thread.currentThread().getId());
+        }
         try {
             inStr = new BufferedReader(new InputStreamReader(thisSocket.getInputStream()));
             DataInputStream inStreamByte = new DataInputStream(thisSocket.getInputStream());
             boolean receiveData = true;
-            int totlen; 
+            int totlen;
+            byte[] fidbuf = new byte[2];
+            inStreamByte.readFully(fidbuf, 0, fidbuf.length);
+            String fileID = new String(fidbuf);
+            // System.out.println("got FID " + fileID);
+
 
             while (receiveData) {
                 totlen = inStreamByte.readInt();
@@ -90,7 +95,7 @@ public class Server implements Runnable {
                 } else {
                     byte[] byteData = new byte[totlen];
                     inStreamByte.readFully(byteData, 0, totlen);
-                    storeMsg(""+thisSocket.getPort(), byteData);
+                    storeMsg(fileID, byteData);
                     String dummy = new String(byteData);
                     if (debug == 1) {
                         System.out.println("reced ==> " + dummy);
@@ -137,7 +142,7 @@ public class Server implements Runnable {
             // out.close();
             // clientSocket.close();
             serverSocket.close();
-            System.out.println("Shut down: Success !");
+            System.out.println("\nShut down: Success !");
         } catch (IOException e) {
             System.err.println("Shut down: ERROR X !");
             e.printStackTrace();
@@ -151,7 +156,6 @@ public class Server implements Runnable {
     }
 
     public void stitchMessages() {
-        System.out.println("[Stitch] Current Thread ID: " + Thread.currentThread().getId());
         while (totalClientReceipts < 2) {
             try {
                 TimeUnit.SECONDS.sleep(2);
@@ -163,11 +167,11 @@ public class Server implements Runnable {
         String fullKey;
         byte[] m;
         int datit = 0;
-        for (String port: portOrder) {
+        for (String port: new String[]{"f1", "f2"}) {
             int totMessages = Integer.parseInt(msgCounter.get(port));
             String halfKey = port;
             for (int i = 0; i < totMessages; i++) {
-                fullKey = halfKey + i;
+                fullKey = halfKey + "#" + i;
                 m = messageDict.get(fullKey);
                 for (int k = 0; k < m.length; k++) {
                     Data[datit] = m[k];
@@ -186,7 +190,7 @@ public class Server implements Runnable {
         }
         dataReady = true;
         System.out.println("[Processed Data]");
-        File serverCopy = new File("dirThree/threeData.txt");
+        File serverCopy = new File("dirThree/f3.txt");
         try {
             if (serverCopy.delete()) {
                 serverCopy.createNewFile();
@@ -227,7 +231,7 @@ public class Server implements Runnable {
         }
         // outChannel.println(Data);
         // outChannel.println("end");
-        System.out.println("Responded to " + port);
+        System.out.println("Data sent to " + port);
     }
 
     public static void main(String[] args) {

@@ -3,7 +3,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.util.*;
 
-public class clientOne {
+public class client {
     private Socket clientSocket;
     private PrintWriter out;
     private BufferedReader in;
@@ -13,6 +13,8 @@ public class clientOne {
     private static String filename, outputFilename;
     byte[] recFullFile;
     List<byte[]> partialFile = new ArrayList<byte[]>();
+    private static int debug = 0;
+    private static String fid = "f1";
 
     public void sendData() {
         try {
@@ -21,7 +23,7 @@ public class clientOne {
             
             File file = new File(filename);
             byte[] fileData = Files.readAllBytes(file.toPath());
-
+            outStreamByte.write(fid.getBytes());
             int cut = 0;
             for (int i = 0; i < 3; i ++) {
                 outStreamByte.writeInt(100);
@@ -53,7 +55,9 @@ public class clientOne {
             while (runboool) {
                 increment = inByte.readInt();
                 outStreamByte.writeInt(-2);
-                System.out.println(ct + " Incre===> " + increment + " byteind " + byteInd);
+                if (debug == 1) {
+                    System.out.println(ct + " Incre===> " + increment + " byteind " + byteInd);
+                }
                 ct += 1;
                 if (increment == -1) {
                     runboool = false;
@@ -64,14 +68,15 @@ public class clientOne {
                     fullLength += increment;
                     inByte.readFully(tempBuff, 0, tempBuff.length);
                     partialFile.add(tempBuff);
-                    System.out.println("buffered\n");
                     outStreamByte.writeInt(-3);
-                    String dummy = new String(Arrays.copyOfRange(tempBuff,0, tempBuff.length));
-                    System.out.println("\nreced ==> " + dummy + "]\n");
+                    if (debug == 1) {
+                        String dummy = new String(Arrays.copyOfRange(tempBuff,0, tempBuff.length));
+                        System.out.println("\nreced ==> " + dummy + "]\n");
+                    }
                     // byteInd += increment;
                 }
             }
-            System.out.println("\n\nOut of loop");
+            // System.out.println("\n\nOut of loop");
             recFullFile = new byte[fullLength];
             int buffIt = 0;
             for (byte[] piece: partialFile) {
@@ -80,8 +85,10 @@ public class clientOne {
                     buffIt++;
                 }
             }
-            String dummy = new String(Arrays.copyOfRange(recFullFile,0, recFullFile.length));
-            System.out.println("\n\n OUT ==>> " + dummy);
+            if (debug == 1) {
+                String dummy = new String(Arrays.copyOfRange(recFullFile,0, recFullFile.length));
+                System.out.println("\n\n OUT ==>> " + dummy);
+            }
             File clientFullFile = new File(outputFilename);
             if (clientFullFile.delete()) {
                 clientFullFile.createNewFile();
@@ -113,14 +120,20 @@ public class clientOne {
         // System.out.println(args[0]);
         String ipaddress = "dc03.utdallas.edu";
         int port = 9038;
-        clientOne connect =new clientOne();
+        client connect =new client();
         connect.startConnection(ipaddress, port);
-        filename = "dirOne/oneData.txt";
-        outputFilename = "dirOne/fullData.txt";
+        filename = "dirOne/f1.txt";
+        outputFilename = "dirOne/f3.txt";
         if (args.length != 0) {
             if (args[0].equals("2")) {
-                filename = "dirTwo/twoData.txt";
-                outputFilename = "dirTwo/fullData.txt";
+                filename = "dirTwo/f2.txt";
+                outputFilename = "dirTwo/f3.txt";
+                fid = "f2";
+            }
+            if (args.length == 2) {
+                if (args[1].equals("1")) {
+                    debug = 1;
+                }
             }
         }
         connect.sendData();
